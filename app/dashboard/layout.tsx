@@ -1,5 +1,5 @@
 import { AppSidebar } from "@/components/sidebar/app-sidebar"
-import { SiteHeader } from "@/components/sidebar/page-header"
+import { SiteHeader } from "@/components/sidebar/site-header"
 import {
   SidebarInset,
   SidebarProvider,
@@ -13,14 +13,17 @@ export const metadata: Metadata = {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <SiteHeader />
-      <div className="flex flex-1">
-        <AppSidebar />
-        <SidebarInset>
-          {children}
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    <div className="[--header-height:calc(--spacing(14))]">
+      <SidebarProvider className="flex flex-col">
+        <SiteHeader />
+        <div className="flex flex-1">
+          <SidebarInset>
+            <div className="flex flex-1 flex-col gap-4 p-4">
+              {children}
+            </div>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    </div>
   )
 }
