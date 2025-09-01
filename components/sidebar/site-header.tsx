@@ -8,12 +8,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { SidebarMenuButton } from "../ui/sidebar"
 import { Command } from "lucide-react"
 import { NavUser } from "./nav-user"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { mockPrData } from "@/constants/mockData"
 
 const user = {
   name: "shadcn",
@@ -30,24 +30,6 @@ export function SiteHeader() {
     
     // Check if we're on a dashboard PR route (dashboard/[prId])
     if (segments[0] === 'dashboard' && segments.length > 1) {
-      // Use the same mock data structure as the page
-      const mockPrData = {
-        title: "Add user authentication system",
-        number: 42,
-        fromBranch: "feature/auth",
-        toBranch: "main",
-        status: "open",
-        hasConflicts: true,
-        repo: "myorg/myapp",
-        author: "john-doe",
-        createdAt: "2024-01-15T10:30:00Z",
-        updatedAt: "2024-01-15T14:45:00Z",
-        commits: 8,
-        additions: 156,
-        deletions: 23,
-        conflicts: []
-      }
-      
       setPrTitle(mockPrData.title)
     } else {
       setPrTitle(null)
