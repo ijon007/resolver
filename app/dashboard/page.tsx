@@ -4,9 +4,21 @@ import { useState } from "react"
 import { Github } from "lucide-react"
 import { PrUrlForm } from "@/components/dashboard/PrUrlForm"
 import { RecentConflicts } from "@/components/dashboard/RecentConflicts"
+import { useSession } from "@/lib/auth-client"
+import { signInWithGitHub } from "@/actions/auth"
+import { Button } from "@/components/ui/button"
 
 export default function Page() {
   const [showEmptyState, setShowEmptyState] = useState(false)
+  const { data: session, isPending } = useSession()
+
+  if (isPending) {
+    return (
+      <div className="container mx-auto p-4 max-w-4xl">
+        <div className="text-center">Loading...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">

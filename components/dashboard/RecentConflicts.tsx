@@ -1,12 +1,21 @@
+"use client"
+
 import { ConflictCard } from "./ConflictCard"
 import { EmptyState } from "./EmptyState"
 import { mockConflicts } from "@/constants/mockData"
+import { useSession } from "@/lib/auth-client"
 
 interface RecentConflictsProps {
   showEmptyState?: boolean
 }
 
 export function RecentConflicts({ showEmptyState = false }: RecentConflictsProps) {
+  const { data: session } = useSession()
+
+  if (!session) {
+    return null
+  }
+
   if (showEmptyState || mockConflicts.length === 0) {
     return <EmptyState />
   }

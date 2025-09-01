@@ -119,7 +119,7 @@ export function SiteHeader() {
 
       <div className="flex items-center gap-2 px-4">
         <ThemeSwitcher />
-        <NavUser user={user} />
+        <NavUser />
       </div>
     </header>
   )
