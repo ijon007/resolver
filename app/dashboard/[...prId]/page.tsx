@@ -1,29 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
-  Github, 
-  GitBranch, 
   AlertTriangle, 
   CheckCircle, 
   FileText,
   Bot,
-  ArrowLeft,
-  User,
-  Calendar,
-  GitCommit,
-  Plus,
-  Minus,
   GitBranchIcon
 } from "lucide-react"
-import Link from "next/link"
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 // Mock data for MVP - will be replaced with real GitHub API calls
 const mockPrData = {
