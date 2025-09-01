@@ -61,7 +61,7 @@ export function SiteHeader() {
     // Always start with home
     breadcrumbs.push({
       label: "Resolver",
-      href: "/",
+      href: "/dashboard",
       isLast: segments.length === 0
     })
     
@@ -84,15 +84,14 @@ export function SiteHeader() {
       }
     }
   
-    
     return breadcrumbs
   }
   
   const breadcrumbs = generateBreadcrumbs()
 
   return (
-    <header className="bg-background sticky top-0 z-50 flex w-full items-center border-b justify-between">
-      <div className="flex h-(--header-height) w-full items-center justify-start gap-2 px-4">
+    <header className="bg-background sticky top-0 z-50 flex items-center border-b justify-between">
+      <div className="flex h-(--header-height) items-center justify-start gap-2 px-4">
         <Breadcrumb className="hidden sm:block">
           <BreadcrumbList>
             {breadcrumbs.map((breadcrumb, index) => (
@@ -135,7 +134,9 @@ export function SiteHeader() {
         </Breadcrumb>
       </div>
 
-      {/* <NavUser user={user} /> */}
+      <div className="px-4">
+        <NavUser user={user} />
+      </div>
     </header>
   )
 }
