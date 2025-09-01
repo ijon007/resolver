@@ -24,8 +24,8 @@ export function ConflictsList({ selectedFile, onFileSelect }: ConflictsListProps
                 key={index}
                 className={`p-2 rounded border cursor-pointer transition-colors ${
                   selectedFile === index 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-transparent hover:border-gray-200 hover:bg-muted/50'
+                    ? 'border-primary bg-primary/10' 
+                    : 'border-transparent hover:border-border hover:bg-muted/50'
                 }`}
                 onClick={() => onFileSelect(index)}
               >

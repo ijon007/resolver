@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Command } from "lucide-react"
 import { NavUser } from "./nav-user"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useState, useEffect } from "react"
@@ -116,7 +117,8 @@ export function SiteHeader() {
         </Breadcrumb>
       </div>
 
-      <div className="px-4">
+      <div className="flex items-center gap-2 px-4">
+        <ThemeSwitcher />
         <NavUser user={user} />
       </div>
     </header>

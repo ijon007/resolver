@@ -1,8 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   AlertTriangle, 
@@ -11,9 +10,11 @@ import {
   Bot
 } from "lucide-react"
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { atomDark, oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { getLanguageFromFile } from "@/lib/utils"
 import { mockPrData, getMockResolvedContent } from "@/constants/mockData"
+import { useTheme } from "@/hooks/use-theme"
 
 interface FileContentProps {
   selectedFile: number
@@ -22,6 +23,12 @@ interface FileContentProps {
 export function FileContent({ selectedFile }: FileContentProps) {
   const [isResolving, setIsResolving] = useState(false)
   const [resolvedContent, setResolvedContent] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const { isDark } = useTheme()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleAiResolve = async () => {
     setIsResolving(true)
@@ -41,6 +48,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
   }
 
   const currentFile = mockPrData.conflicts[selectedFile]
+  const syntaxTheme = mounted ? (isDark ? oneDark : oneLight) : oneLight
 
   return (
     <div className="lg:col-span-2">
@@ -65,7 +73,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
             <TabsList className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
               <TabsTrigger 
                 value="conflicts" 
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm cursor-pointer"
               >
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Conflicts
@@ -73,7 +81,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
               <TabsTrigger 
                 value="resolved" 
                 disabled={!resolvedContent}
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm cursor-pointer"
               >
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Resolved
@@ -84,7 +92,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
               <div className="rounded border overflow-hidden">
                 <SyntaxHighlighter
                   language={getLanguageFromFile(currentFile?.file || '')}
-                  style={vscDarkPlus}
+                  style={syntaxTheme}
                   customStyle={{
                     margin: 0,
                     fontSize: '13px',
@@ -102,7 +110,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
               <div className="rounded border overflow-hidden">
                 <SyntaxHighlighter
                   language={getLanguageFromFile(currentFile?.file || '')}
-                  style={vscDarkPlus}
+                  style={syntaxTheme}
                   customStyle={{
                     margin: 0,
                     fontSize: '13px',
