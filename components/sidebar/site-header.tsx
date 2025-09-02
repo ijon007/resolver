@@ -15,6 +15,7 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { mockPrData } from "@/constants/mockData"
+import Image from "next/image"
 
 export function SiteHeader() {
   const pathname = usePathname()
@@ -79,10 +80,13 @@ export function SiteHeader() {
                     <BreadcrumbPage>
                       {index === 0 ? (
                         <div className="flex items-center gap-2">
-                          <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                            <Command className="size-4" />
-                          </div>
-                          <span className="font-medium">{breadcrumb.label}</span>
+                          <Image
+                            src="/logo-no-bg.svg"
+                            alt="Resolver"
+                            width={20}
+                            height={20}
+                          />
+                          <span className="font-medium text-foreground">{breadcrumb.label}</span>
                         </div>
                       ) : (
                         <span className="font-medium">{breadcrumb.label}</span>
@@ -93,10 +97,13 @@ export function SiteHeader() {
                       <Link href={breadcrumb.href}>
                         {index === 0 ? (
                           <div className="flex items-center gap-2">
-                            <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                              <Command className="size-4" />
-                            </div>
-                            <span className="font-medium">{breadcrumb.label}</span>
+                            <Image
+                              src="/logo-no-bg.svg"
+                              alt="Resolver"
+                              width={20}
+                              height={20}
+                            />
+                            <span className="font-medium text-foreground">{breadcrumb.label}</span>
                           </div>
                         ) : (
                           <span className="font-medium">{breadcrumb.label}</span>

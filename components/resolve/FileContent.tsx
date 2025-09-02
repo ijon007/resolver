@@ -15,16 +15,21 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { getLanguageFromFile } from "@/lib/utils"
 import { useTheme } from "@/hooks/use-theme"
+import { resolveConflict } from "@/actions/ai-resolve"
+import { applyResolutionToGitHub } from "@/actions/github-resolve"
 
 interface FileContentProps {
   files: any[]
   selectedFile: number
   hasConflicts?: boolean
+  prId?: string
 }
 
-export function FileContent({ files, selectedFile, hasConflicts }: FileContentProps) {
+export function FileContent({ files, selectedFile, hasConflicts, prId }: FileContentProps) {
   const [isResolving, setIsResolving] = useState(false)
   const [resolvedContent, setResolvedContent] = useState<string | null>(null)
+  const [resolutionExplanation, setResolutionExplanation] = useState<string | null>(null)
+  const [confidence, setConfidence] = useState<number | null>(null)
   const [mounted, setMounted] = useState(false)
   const { isDark } = useTheme()
 
@@ -33,17 +38,59 @@ export function FileContent({ files, selectedFile, hasConflicts }: FileContentPr
   }, [])
 
   const handleAiResolve = async () => {
+    if (!currentFile?.patch) return
+    
     setIsResolving(true)
     
-    // Mock AI resolution - will be replaced with real AI call
-    setTimeout(() => {
-      setResolvedContent("// AI resolved content would go here")
+    try {
+      const result = await resolveConflict(
+        currentFile.patch,
+        currentFile.filename
+      )
+      
+      if (result.success && result.data) {
+        setResolvedContent(result.data.resolvedContent)
+        setResolutionExplanation(result.data.explanation)
+        setConfidence(result.data.confidence)
+      } else {
+        console.error('Resolution failed:', result.error)
+        alert('Failed to resolve conflicts. Please try again.')
+      }
+    } catch (error) {
+      console.error('Resolution error:', error)
+      alert('An error occurred while resolving conflicts.')
+    } finally {
       setIsResolving(false)
-    }, 2000)
+    }
   }
 
-  const handleApplyToGithub = () => {
-    alert("Applied to GitHub! (This is a mock)")
+  const handleApplyToGithub = async () => {
+    if (!resolvedContent || !currentFile?.filename || !prId) {
+      alert("Missing required data to apply resolution")
+      return
+    }
+
+    try {
+      const result = await applyResolutionToGitHub(
+        prId,
+        currentFile.filename,
+        resolvedContent,
+        `AI: Resolve conflicts in ${currentFile.filename}`
+      )
+
+      if (result.success) {
+        alert("Resolution applied to GitHub successfully!")
+        // Reset the resolved content after successful application
+        setResolvedContent(null)
+        setResolutionExplanation(null)
+        setConfidence(null)
+      } else {
+        alert(`Failed to apply resolution: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Apply to GitHub error:', error)
+      alert('An error occurred while applying the resolution.')
+    }
   }
 
   const conflictedFiles = (files || []).filter(file => file.status === 'modified' || file.status === 'added')
@@ -125,14 +172,38 @@ export function FileContent({ files, selectedFile, hasConflicts }: FileContentPr
                 </SyntaxHighlighter>
               </div>
               {resolvedContent && (
-                <div className="mt-3 flex gap-2">
-                  <Button onClick={handleApplyToGithub} size="sm" className="flex items-center gap-2">
-                    <CheckCircle className="h-3 w-3" />
-                    Apply to GitHub
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setResolvedContent(null)}>
-                    Reset
-                  </Button>
+                <div className="mt-3 space-y-3">
+                  {resolutionExplanation && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      <h4 className="font-medium text-sm mb-1">AI Explanation:</h4>
+                      <p className="text-sm text-muted-foreground">{resolutionExplanation}</p>
+                      {confidence && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Confidence:</span>
+                          <div className="flex-1 bg-background rounded-full h-2">
+                            <div 
+                              className="h-2 rounded-full bg-primary" 
+                              style={{ width: `${confidence * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium">{Math.round(confidence * 100)}%</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button onClick={handleApplyToGithub} size="sm" className="flex items-center gap-2">
+                      <CheckCircle className="h-3 w-3" />
+                      Apply to GitHub
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setResolvedContent(null)
+                      setResolutionExplanation(null)
+                      setConfidence(null)
+                    }}>
+                      Reset
+                    </Button>
+                  </div>
                 </div>
               )}
             </TabsContent>

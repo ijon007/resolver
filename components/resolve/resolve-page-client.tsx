@@ -65,6 +65,7 @@ export function ResolvePageClient({ prId, pr, files }: ResolvePageClientProps) {
           files={files.files}
           selectedFile={selectedFile}
           hasConflicts={hasConflicts}
+          prId={prId}
         />
       </div>
     </div>
