@@ -19,11 +19,13 @@ export function ConflictCard({ conflict }: ConflictCardProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "open":
-        return <AlertTriangle className="h-4 w-4 text-orange-600" />
+        return <AlertTriangle className="h-4 w-4 text-green-600" />
       case "resolved":
         return <CheckCircle className="h-4 w-4 text-green-600" />
       case "merged":
         return <GitBranch className="h-4 w-4 text-purple-600" />
+      case "closed":
+        return <AlertTriangle className="h-4 w-4 text-red-600" />
       default:
         return <AlertTriangle className="h-4 w-4 text-gray-600" />
     }
@@ -31,7 +33,7 @@ export function ConflictCard({ conflict }: ConflictCardProps) {
   
   return (
     <Link 
-      href={`/dashboard/${conflict.id}`} 
+      href={`/dashboard/${conflict.repo}/${conflict.prNumber}`} 
       className="border rounded-lg p-3 hover:bg-muted/50 transition-colors"
     >
       <div className="flex items-start justify-between mb-2">

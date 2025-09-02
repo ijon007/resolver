@@ -80,11 +80,13 @@ export const getStatusText = (status: string) => {
 export const getStatusColor = (status: string) => {
   switch (status) {
     case "open":
-      return "text-orange-600"
+      return "text-green-600"
     case "resolved":
       return "text-green-600"
     case "merged":
       return "text-purple-600"
+    case "closed":
+      return "text-red-600"
     default:
       return "text-gray-600"
   }

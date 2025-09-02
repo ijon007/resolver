@@ -8,9 +8,9 @@ export function EmptyState() {
           <Github className="h-8 w-8 text-muted-foreground" />
         </div>
         <div>
-          <h3 className="font-medium text-sm">No conflicts yet</h3>
+          <h3 className="font-medium text-sm">No open PRs</h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Resolve your first merge conflict to see it here
+            Create a pull request or paste a GitHub PR URL above to get started
           </p>
         </div>
       </div>

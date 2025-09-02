@@ -16,12 +16,6 @@ import Link from "next/link"
 import { useState, useEffect } from "react"
 import { mockPrData } from "@/constants/mockData"
 
-const user = {
-  name: "shadcn",
-  email: "m@example.com",
-  avatar: "/avatars/shadcn.jpg",
-}
-
 export function SiteHeader() {
   const pathname = usePathname()
   const [prTitle, setPrTitle] = useState<string | null>(null)

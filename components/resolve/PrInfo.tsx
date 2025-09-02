@@ -1,38 +1,46 @@
 import { Badge } from "@/components/ui/badge"
-import { mockPrData } from "@/constants/mockData"
 
-export function PrInfo() {
+interface PrInfoProps {
+  pr: any
+}
+
+export function PrInfo({ pr }: PrInfoProps) {
+  const getStatusColor = (state: string) => {
+    switch (state) {
+      case "open":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "closed":
+        return "bg-red-100 text-red-800 border-red-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
+
   return (
     <div className="mb-6">
       <div className="flex items-center gap-3 mb-2">
         <Badge 
-          variant={mockPrData.status === "open" ? "default" : mockPrData.status === "merged" ? "secondary" : "destructive"}
-          className={`text-sm ${
-            mockPrData.status === "open" 
-              ? "bg-green-100 text-green-800 border-green-200" 
-              : mockPrData.status === "merged" 
-              ? "bg-purple-100 text-purple-800 border-purple-200"
-              : ""
-          }`}
+          variant="secondary"
+          className={`text-sm ${getStatusColor(pr.state)}`}
         >
-          {mockPrData.status === "open" ? "Open" : mockPrData.status === "merged" ? "Merged" : "Closed"}
+          {pr.state === "open" ? "Open" : pr.state === "closed" ? "Closed" : "Merged"}
         </Badge>
         <span className="text-sm text-muted-foreground">
-          <span className="font-semibold">{mockPrData.author}</span> wants to merge 1 commit into{" "}
-          <span className="font-medium font-mono border border-border bg-muted px-1 rounded-md">{mockPrData.toBranch}</span> from{" "}
-          <span className="font-medium font-mono border border-border bg-muted px-1 rounded-md">{mockPrData.fromBranch}</span>
+          <span className="font-semibold">{pr.user.login}</span> wants to merge {pr.commits} commit{pr.commits !== 1 ? 's' : ''} into{" "}
+          <span className="font-medium font-mono border border-border bg-muted px-1 rounded-md">{pr.base.ref}</span> from{" "}
+          <span className="font-medium font-mono border border-border bg-muted px-1 rounded-md">{pr.head.ref}</span>
         </span>
       </div>
       
       <div className="flex items-center gap-4 text-sm">
         <span className="flex items-center gap-1 text-green-600 font-medium">
-          +{mockPrData.additions}
+          +{pr.additions}
         </span>
         <span className="flex items-center gap-1 text-red-600 font-medium">
-          -{mockPrData.deletions}
+          -{pr.deletions}
         </span>
         <span className="text-muted-foreground">
-          {mockPrData.conflicts.length} files with conflicts
+          {pr.repo?.full_name || pr.head?.repo?.full_name || 'Unknown repo'}
         </span>
       </div>
     </div>

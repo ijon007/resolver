@@ -7,20 +7,22 @@ import {
   AlertTriangle, 
   CheckCircle, 
   FileText,
-  Bot
+  Bot,
+  Github
 } from "lucide-react"
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { atomDark, oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { getLanguageFromFile } from "@/lib/utils"
-import { mockPrData, getMockResolvedContent } from "@/constants/mockData"
 import { useTheme } from "@/hooks/use-theme"
 
 interface FileContentProps {
+  files: any[]
   selectedFile: number
+  hasConflicts?: boolean
 }
 
-export function FileContent({ selectedFile }: FileContentProps) {
+export function FileContent({ files, selectedFile, hasConflicts }: FileContentProps) {
   const [isResolving, setIsResolving] = useState(false)
   const [resolvedContent, setResolvedContent] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
@@ -35,20 +37,20 @@ export function FileContent({ selectedFile }: FileContentProps) {
     
     // Mock AI resolution - will be replaced with real AI call
     setTimeout(() => {
-      const currentFile = mockPrData.conflicts[selectedFile]
-      const resolved = getMockResolvedContent(currentFile.content)
-      setResolvedContent(resolved)
+      setResolvedContent("// AI resolved content would go here")
       setIsResolving(false)
     }, 2000)
   }
 
   const handleApplyToGithub = () => {
-    // Mock apply to GitHub - will be replaced with real GitHub API call
     alert("Applied to GitHub! (This is a mock)")
   }
 
-  const currentFile = mockPrData.conflicts[selectedFile]
+  const conflictedFiles = (files || []).filter(file => file.status === 'modified' || file.status === 'added')
+  const currentFile = conflictedFiles[selectedFile]
   const syntaxTheme = mounted ? (isDark ? oneDark : oneLight) : oneLight
+
+
 
   return (
     <div className="lg:col-span-2">
@@ -56,7 +58,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
         <div className="p-3 border-b bg-muted/30 flex items-center justify-between">
           <h3 className="font-medium text-sm flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            {currentFile?.file.split('/').pop()}
+            {currentFile?.filename.split('/').pop()}
           </h3>
           <Button 
             onClick={handleAiResolve}
@@ -76,7 +78,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm cursor-pointer"
               >
                 <AlertTriangle className="h-3 w-3 mr-1" />
-                Conflicts
+                File Content
               </TabsTrigger>
               <TabsTrigger 
                 value="resolved" 
@@ -91,7 +93,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
             <TabsContent value="conflicts" className="mt-3">
               <div className="rounded border overflow-hidden">
                 <SyntaxHighlighter
-                  language={getLanguageFromFile(currentFile?.file || '')}
+                  language={getLanguageFromFile(currentFile?.filename || '')}
                   style={syntaxTheme}
                   customStyle={{
                     margin: 0,
@@ -101,7 +103,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
                   showLineNumbers={true}
                   wrapLines={true}
                 >
-                  {currentFile?.content || ''}
+                  {currentFile?.patch || '// No content available'}
                 </SyntaxHighlighter>
               </div>
             </TabsContent>
@@ -109,7 +111,7 @@ export function FileContent({ selectedFile }: FileContentProps) {
             <TabsContent value="resolved" className="mt-3">
               <div className="rounded border overflow-hidden">
                 <SyntaxHighlighter
-                  language={getLanguageFromFile(currentFile?.file || '')}
+                  language={getLanguageFromFile(currentFile?.filename || '')}
                   style={syntaxTheme}
                   customStyle={{
                     margin: 0,

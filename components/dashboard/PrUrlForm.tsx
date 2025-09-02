@@ -36,7 +36,7 @@ export function PrUrlForm() {
     // Extract PR ID from GitHub URL
     const prId = extractPrId(prUrl)
     if (prId) {
-      router.push(`/resolve/${prId}`)
+      router.push(`/dashboard/${prId}`)
     } else {
       alert("Invalid GitHub PR URL")
     }
