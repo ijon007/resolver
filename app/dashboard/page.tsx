@@ -5,12 +5,10 @@ import { Github } from "lucide-react"
 import { PrUrlForm } from "@/components/dashboard/PrUrlForm"
 import { RecentConflicts } from "@/components/dashboard/RecentConflicts"
 import { useSession } from "@/lib/auth-client"
-import { signInWithGitHub } from "@/actions/auth"
-import { Button } from "@/components/ui/button"
 
 export default function Page() {
   const [showEmptyState, setShowEmptyState] = useState(false)
-  const { data: session, isPending } = useSession()
+  const { isPending } = useSession()
 
   if (isPending) {
     return (

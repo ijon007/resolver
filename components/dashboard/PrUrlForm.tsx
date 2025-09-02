@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Github, AlertTriangle } from "lucide-react"
 import { extractPrId } from "@/lib/utils"
-import { useSession } from "@/lib/auth-client"
-import { signInWithGitHub } from "@/actions/auth"
+import { signIn, useSession } from "@/lib/auth-client"
 import {
   Dialog,
   DialogContent,
@@ -43,6 +42,14 @@ export function PrUrlForm() {
     }
     
     setIsLoading(false)
+  }
+
+  const handleGithubSignIn = async () => {
+    await signIn.social({
+      provider: "github",
+      callbackURL: '/dashboard',
+      errorCallbackURL: '/dashboard?error=true'
+    });
   }
 
   return (
@@ -92,7 +99,7 @@ export function PrUrlForm() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
-            <form action={signInWithGitHub}>
+            <form action={handleGithubSignIn}>
               <Button type="submit" className="w-full flex items-center gap-2">
                 <Github className="h-4 w-4" />
                 Sign in with GitHub
