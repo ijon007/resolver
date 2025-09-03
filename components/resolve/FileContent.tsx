@@ -17,20 +17,23 @@ import { getLanguageFromFile } from "@/lib/utils"
 import { useTheme } from "@/hooks/use-theme"
 import { resolveConflict } from "@/actions/ai-resolve"
 import { applyResolutionToGitHub } from "@/actions/github-resolve"
+import { toast } from "sonner"
 
 interface FileContentProps {
   files: any[]
   selectedFile: number
   hasConflicts?: boolean
   prId?: string
+  pr?: any
 }
 
-export function FileContent({ files, selectedFile, hasConflicts, prId }: FileContentProps) {
+export function FileContent({ files, selectedFile, hasConflicts, prId, pr }: FileContentProps) {
   const [isResolving, setIsResolving] = useState(false)
   const [resolvedContent, setResolvedContent] = useState<string | null>(null)
   const [resolutionExplanation, setResolutionExplanation] = useState<string | null>(null)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [activeTab, setActiveTab] = useState("conflicts")
   const { isDark } = useTheme()
 
   useEffect(() => {
@@ -52,13 +55,21 @@ export function FileContent({ files, selectedFile, hasConflicts, prId }: FileCon
         setResolvedContent(result.data.resolvedContent)
         setResolutionExplanation(result.data.explanation)
         setConfidence(result.data.confidence)
+        setActiveTab("resolved")
+        toast.success("Conflicts resolved successfully!", {
+          description: `Resolved conflicts in ${currentFile.filename} with ${Math.round((result.data.confidence || 0) * 100)}% confidence`
+        })
       } else {
         console.error('Resolution failed:', result.error)
-        alert('Failed to resolve conflicts. Please try again.')
+        toast.error('Failed to resolve conflicts', {
+          description: result.error || 'Please try again.'
+        })
       }
     } catch (error) {
       console.error('Resolution error:', error)
-      alert('An error occurred while resolving conflicts.')
+      toast.error('An error occurred while resolving conflicts', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
     } finally {
       setIsResolving(false)
     }
@@ -84,6 +95,7 @@ export function FileContent({ files, selectedFile, hasConflicts, prId }: FileCon
         setResolvedContent(null)
         setResolutionExplanation(null)
         setConfidence(null)
+        setActiveTab("conflicts")
       } else {
         alert(`Failed to apply resolution: ${result.error}`)
       }
@@ -93,7 +105,9 @@ export function FileContent({ files, selectedFile, hasConflicts, prId }: FileCon
     }
   }
 
-  const conflictedFiles = (files || []).filter(file => file.status === 'modified' || file.status === 'added')
+  const conflictedFiles = (files || []).filter(file => 
+    file.hasConflict || file.status === 'modified' || file.status === 'added'
+  )
   const currentFile = conflictedFiles[selectedFile]
   const syntaxTheme = mounted ? (isDark ? oneDark : oneLight) : oneLight
 
@@ -118,7 +132,7 @@ export function FileContent({ files, selectedFile, hasConflicts, prId }: FileCon
           </Button>
         </div>
         <div className="p-3">
-          <Tabs defaultValue="conflicts" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
               <TabsTrigger 
                 value="conflicts" 
@@ -138,21 +152,72 @@ export function FileContent({ files, selectedFile, hasConflicts, prId }: FileCon
             </TabsList>
             
             <TabsContent value="conflicts" className="mt-3">
-              <div className="rounded border overflow-hidden">
-                <SyntaxHighlighter
-                  language={getLanguageFromFile(currentFile?.filename || '')}
-                  style={syntaxTheme}
-                  customStyle={{
-                    margin: 0,
-                    fontSize: '13px',
-                    lineHeight: '1.4',
-                  }}
-                  showLineNumbers={true}
-                  wrapLines={true}
-                >
-                  {currentFile?.patch || '// No content available'}
-                </SyntaxHighlighter>
-              </div>
+              {currentFile?.hasConflict && currentFile?.baseContent && currentFile?.headContent ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="p-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-t">
+                        <h4 className="text-sm font-medium text-red-800 dark:text-red-200">
+                          Base Branch ({pr?.base?.ref || 'main'})
+                        </h4>
+                      </div>
+                      <div className="rounded-b border border-t-0 border-red-200 dark:border-red-800 overflow-hidden">
+                        <SyntaxHighlighter
+                          language={getLanguageFromFile(currentFile?.filename || '')}
+                          style={syntaxTheme}
+                          customStyle={{
+                            margin: 0,
+                            fontSize: '13px',
+                            lineHeight: '1.4',
+                          }}
+                          showLineNumbers={true}
+                          wrapLines={true}
+                        >
+                          {currentFile.baseContent}
+                        </SyntaxHighlighter>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-t">
+                        <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                          Head Branch ({pr?.head?.ref || 'feature'})
+                        </h4>
+                      </div>
+                      <div className="rounded-b border border-t-0 border-blue-200 dark:border-blue-800 overflow-hidden">
+                        <SyntaxHighlighter
+                          language={getLanguageFromFile(currentFile?.filename || '')}
+                          style={syntaxTheme}
+                          customStyle={{
+                            margin: 0,
+                            fontSize: '13px',
+                            lineHeight: '1.4',
+                          }}
+                          showLineNumbers={true}
+                          wrapLines={true}
+                        >
+                          {currentFile.headContent}
+                        </SyntaxHighlighter>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded border overflow-hidden">
+                  <SyntaxHighlighter
+                    language={getLanguageFromFile(currentFile?.filename || '')}
+                    style={syntaxTheme}
+                    customStyle={{
+                      margin: 0,
+                      fontSize: '13px',
+                      lineHeight: '1.4',
+                    }}
+                    showLineNumbers={true}
+                    wrapLines={true}
+                  >
+                    {currentFile?.patch || '// No content available'}
+                  </SyntaxHighlighter>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="resolved" className="mt-3">
@@ -174,21 +239,33 @@ export function FileContent({ files, selectedFile, hasConflicts, prId }: FileCon
               {resolvedContent && (
                 <div className="mt-3 space-y-3">
                   {resolutionExplanation && (
-                    <div className="p-3 bg-muted rounded-lg">
-                      <h4 className="font-medium text-sm mb-1">AI Explanation:</h4>
-                      <p className="text-sm text-muted-foreground">{resolutionExplanation}</p>
-                      {confidence && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Confidence:</span>
-                          <div className="flex-1 bg-background rounded-full h-2">
-                            <div 
-                              className="h-2 rounded-full bg-primary" 
-                              style={{ width: `${confidence * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-medium">{Math.round(confidence * 100)}%</span>
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 px-4 py-3 border-b">
+                        <div className="flex items-center gap-2">
+                          <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100">AI Analysis</h4>
                         </div>
-                      )}
+                      </div>
+                      <div className="p-4 bg-background">
+                        <p className="text-sm leading-relaxed text-foreground mb-4">{resolutionExplanation}</p>
+                        {confidence && (
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-muted-foreground">Confidence</span>
+                            <div className="flex-1 bg-muted rounded-full h-2.5 overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  confidence >= 0.8 ? 'bg-green-500' : 
+                                  confidence >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}
+                                style={{ width: `${confidence * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-semibold min-w-[3rem] text-right">
+                              {Math.round(confidence * 100)}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                   <div className="flex gap-2">
@@ -200,6 +277,7 @@ export function FileContent({ files, selectedFile, hasConflicts, prId }: FileCon
                       setResolvedContent(null)
                       setResolutionExplanation(null)
                       setConfidence(null)
+                      setActiveTab("conflicts")
                     }}>
                       Reset
                     </Button>

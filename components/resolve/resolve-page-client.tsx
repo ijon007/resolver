@@ -20,8 +20,8 @@ export function ResolvePageClient({ prId, pr, files }: ResolvePageClientProps) {
   console.log("ResolvePageClient props:", { prId, pr, files })
 
   // Check if there are any files with conflicts
-  const hasConflicts = files?.files?.some((file: any) => 
-    file.status === 'modified' || file.status === 'added'
+  const hasConflicts = files?.hasConflicts || files?.files?.some((file: any) => 
+    file.hasConflict || (file.status === 'modified' || file.status === 'added')
   )
 
   if (!hasConflicts) {
@@ -66,6 +66,7 @@ export function ResolvePageClient({ prId, pr, files }: ResolvePageClientProps) {
           selectedFile={selectedFile}
           hasConflicts={hasConflicts}
           prId={prId}
+          pr={pr}
         />
       </div>
     </div>

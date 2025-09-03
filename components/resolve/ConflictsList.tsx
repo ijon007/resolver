@@ -9,7 +9,9 @@ interface ConflictsListProps {
 }
 
 export function ConflictsList({ files, selectedFile, onFileSelect, hasConflicts }: ConflictsListProps) {
-  const conflictedFiles = (files || []).filter(file => file.status === 'modified' || file.status === 'added')
+  const conflictedFiles = (files || []).filter(file => 
+    file.hasConflict || file.status === 'modified' || file.status === 'added'
+  )
 
 
 

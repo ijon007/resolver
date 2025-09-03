@@ -41,7 +41,6 @@ export async function fetchPR(prId: string) {
   }
 
   const data = await response.json()
-  console.log("PR data:", data)
   return data
 }
 
@@ -68,6 +67,29 @@ export async function fetchPRFiles(prId: string) {
     throw new Error("Invalid PR ID format")
   }
 
+  // First, get the PR details to check mergeability and get branch info
+  const prResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken.accessToken}`,
+        'Accept': 'application/vnd.github.v3+json',
+      },
+    }
+  )
+
+  if (!prResponse.ok) {
+    throw new Error(`Failed to fetch PR: ${prResponse.status}`)
+  }
+
+  const pr = await prResponse.json()
+  
+  // If PR is not mergeable, we need to detect conflicts
+  if (pr.mergeable === false) {
+    return await detectMergeConflicts(owner, repo, pr, accessToken.accessToken)
+  }
+
+  // If mergeable, use the standard files endpoint
   const response = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/files`,
     {
@@ -83,6 +105,109 @@ export async function fetchPRFiles(prId: string) {
   }
 
   return response.json()
+}
+
+async function detectMergeConflicts(owner: string, repo: string, pr: any, accessToken: string) {
+  try {
+    // Use the compare API to get the differences between base and head
+    const compareResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/compare/${pr.base.ref}...${pr.head.ref}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      }
+    )
+
+    if (!compareResponse.ok) {
+      throw new Error(`Failed to compare branches: ${compareResponse.status}`)
+    }
+
+    const compareData = await compareResponse.json()
+    
+    // Get file contents from both branches to detect conflicts
+    const conflictedFiles = []
+    
+    for (const file of compareData.files || []) {
+      if (file.status === 'modified' || file.status === 'added') {
+        try {
+          // Get file content from base branch
+          const baseContent = await getFileContent(owner, repo, file.filename, pr.base.sha, accessToken)
+          
+          // Get file content from head branch  
+          const headContent = await getFileContent(owner, repo, file.filename, pr.head.sha, accessToken)
+          
+          // Check if there are actual conflicts by comparing the content
+          if (baseContent && headContent && baseContent !== headContent) {
+            conflictedFiles.push({
+              ...file,
+              baseContent,
+              headContent,
+              hasConflict: true
+            })
+          }
+        } catch (error) {
+          console.warn(`Failed to get content for ${file.filename}:`, error)
+          // Still include the file but mark as potential conflict
+          conflictedFiles.push({
+            ...file,
+            hasConflict: true
+          })
+        }
+      }
+    }
+
+    return {
+      files: conflictedFiles,
+      hasConflicts: conflictedFiles.length > 0
+    }
+  } catch (error) {
+    console.error('Error detecting merge conflicts:', error)
+    // Fallback to basic file list
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${pr.number}/files`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      }
+    )
+    
+    if (response.ok) {
+      const files = await response.json()
+      return {
+        files: files.map((file: any) => ({ ...file, hasConflict: true })),
+        hasConflicts: files.length > 0
+      }
+    }
+    
+    throw error
+  }
+}
+
+async function getFileContent(owner: string, repo: string, filename: string, ref: string, accessToken: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${filename}?ref=${ref}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      return null
+    }
+
+    const data = await response.json()
+    return Buffer.from(data.content, 'base64').toString('utf-8')
+  } catch (error) {
+    return null
+  }
 }
 
 export async function fetchUserPRs() {

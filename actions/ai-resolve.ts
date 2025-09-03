@@ -1,8 +1,15 @@
 "use server"
 
-import { generateText } from 'ai'
+import { generateObject } from 'ai'
+import { z } from 'zod'
 import { SYSTEM_PROMPT } from '@/lib/agent/system-prompt'
-import { conflictResolutionTools } from '@/lib/agent/tools'
+
+const conflictResolutionSchema = z.object({
+  resolvedContent: z.string().describe('The complete resolved file content with all conflicts removed'),
+  explanation: z.string().describe('Detailed explanation of the resolution approach and decisions made'),
+  confidence: z.number().min(0).max(1).describe('Confidence score from 0 to 1'),
+  changesSummary: z.string().describe('Summary of what changes were made during resolution')
+})
 
 export async function resolveConflict(
   fileContent: string,
@@ -10,7 +17,7 @@ export async function resolveConflict(
   prContext?: string
 ) {
   try {
-    const result = await generateText({
+    const result = await generateObject({
       model: 'google/gemini-2.0-flash',
       system: SYSTEM_PROMPT,
       prompt: 
@@ -23,27 +30,17 @@ export async function resolveConflict(
         ${fileContent}
         \`\`\`
 
-        Please analyze and resolve the conflicts using the available tools.`,
-      tools: conflictResolutionTools,
+        Please analyze and resolve the conflicts. Provide the complete resolved content with all conflict markers removed, along with a detailed explanation of your approach and a confidence score.`,
+      schema: conflictResolutionSchema,
     })
 
-    // Extract the resolution from tool calls
-    const resolutionToolCall = result.toolCalls.find(call => call.toolName === 'resolveConflict')
-    
-    if (resolutionToolCall && !resolutionToolCall.dynamic && 'resolvedContent' in resolutionToolCall.input) {
-      return {
-        success: true,
-        data: {
-          resolvedContent: resolutionToolCall.input.resolvedContent,
-          explanation: resolutionToolCall.input.explanation,
-          confidence: resolutionToolCall.input.confidence
-        }
-      }
-    }
-
     return {
-      success: false,
-      error: 'No resolution tool call found in AI response'
+      success: true,
+      data: {
+        resolvedContent: result.object.resolvedContent,
+        explanation: result.object.explanation,
+        confidence: result.object.confidence
+      }
     }
   } catch (error) {
     console.error('AI resolution error:', error)
