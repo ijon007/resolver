@@ -1,0 +1,218 @@
+name: AI Conflict Resolver
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number'
+        required: true
+        type: string
+      owner:
+        description: 'Repository owner'
+        required: true
+        type: string
+      repo:
+        description: 'Repository name'
+        required: true
+        type: string
+      base_branch:
+        description: 'Base branch name'
+        required: true
+        type: string
+      head_branch:
+        description: 'Head branch name'
+        required: true
+        type: string
+
+jobs:
+  detect-and-resolve-conflicts:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure Git
+      run: |
+        git config --global user.name "AI Conflict Resolver"
+        git config --global user.email "ai-resolver@github.com"
+
+    - name: Checkout PR branch
+      run: |
+        git fetch origin ${{ github.event.inputs.head_branch }}
+        git checkout ${{ github.event.inputs.head_branch }}
+
+    - name: Attempt merge to detect conflicts
+      id: merge_attempt
+      run: |
+        # Attempt to merge base branch without committing
+        if git merge origin/${{ github.event.inputs.base_branch }} --no-commit --no-ff; then
+          echo "no_conflicts=true" >> $GITHUB_OUTPUT
+          echo "No conflicts detected"
+        else
+          echo "no_conflicts=false" >> $GITHUB_OUTPUT
+          echo "Conflicts detected"
+        fi
+
+    - name: Get conflicted files
+      if: steps.merge_attempt.outputs.no_conflicts == 'false'
+      id: conflicted_files
+      run: |
+        # Get list of conflicted files
+        git diff --name-only --diff-filter=U > conflicted_files.txt
+        echo "conflicted_files=$(cat conflicted_files.txt | tr '\n' ',' | sed 's/,$//')" >> $GITHUB_OUTPUT
+        echo "Conflicted files:"
+        cat conflicted_files.txt
+
+    - name: Extract file contents
+      if: steps.merge_attempt.outputs.no_conflicts == 'false'
+      id: extract_contents
+      run: |
+        mkdir -p conflicted_files
+        while IFS= read -r file; do
+          if [ -n "$file" ]; then
+            # Create directory structure
+            mkdir -p "conflicted_files/$(dirname "$file")"
+            # Copy the conflicted file
+            cp "$file" "conflicted_files/$file"
+            echo "Extracted: $file"
+          fi
+        done < conflicted_files.txt
+
+    - name: Prepare AI resolution request
+      if: steps.merge_attempt.outputs.no_conflicts == 'false'
+      id: prepare_ai_request
+      run: |
+        # Create a JSON file with all conflicted files
+        echo "[" > conflicted_files.json
+        first=true
+        while IFS= read -r file; do
+          if [ -n "$file" ]; then
+            if [ "$first" = true ]; then
+              first=false
+            else
+              echo "," >> conflicted_files.json
+            fi
+            echo "  {" >> conflicted_files.json
+            echo "    \"filename\": \"$file\"," >> conflicted_files.json
+            echo "    \"content\": $(cat "conflicted_files/$file" | jq -Rs .)" >> conflicted_files.json
+            echo "  }" >> conflicted_files.json
+          fi
+        done < conflicted_files.txt
+        echo "]" >> conflicted_files.json
+
+    - name: Call AI resolution API
+      if: steps.merge_attempt.outputs.no_conflicts == 'false'
+      id: ai_resolution
+      run: |
+        # Call your AI API to resolve conflicts
+        curl -X POST "${{ secrets.AI_API_URL }}/api/ai/resolve-batch" \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${{ secrets.AI_API_KEY }}" \
+          -d @conflicted_files.json \
+          -o resolved_files.json
+
+    - name: Process AI resolutions
+      if: steps.merge_attempt.outputs.no_conflicts == 'false'
+      id: process_resolutions
+      run: |
+        # Create resolved files directory
+        mkdir -p resolved_files
+        
+        # Process each resolved file
+        jq -r '.[] | "\(.filename)|\(.resolvedContent)"' resolved_files.json | while IFS='|' read -r filename content; do
+          if [ -n "$filename" ] && [ -n "$content" ]; then
+            # Create directory structure
+            mkdir -p "resolved_files/$(dirname "$filename")"
+            # Write resolved content
+            echo "$content" > "resolved_files/$filename"
+            echo "Resolved: $filename"
+          fi
+        done
+
+    - name: Upload resolved files as artifact
+      if: steps.merge_attempt.outputs.no_conflicts == 'false'
+      uses: actions/upload-artifact@v4
+      with:
+        name: resolved-conflicts
+        path: |
+          resolved_files.json
+          resolved_files/
+        retention-days: 7
+
+    - name: Upload conflicted files as artifact
+      if: steps.merge_attempt.outputs.no_conflicts == 'false'
+      uses: actions/upload-artifact@v4
+      with:
+        name: original-conflicts
+        path: |
+          conflicted_files.json
+          conflicted_files/
+        retention-days: 7
+
+    - name: Set job outputs
+      id: job_outputs
+      run: |
+        echo "has_conflicts=${{ steps.merge_attempt.outputs.no_conflicts == 'false' }}" >> $GITHUB_OUTPUT
+        echo "conflicted_files_count=$(wc -l < conflicted_files.txt)" >> $GITHUB_OUTPUT
+        echo "workflow_run_id=${{ github.run_id }}" >> $GITHUB_OUTPUT
+
+    - name: Comment on PR
+      if: steps.merge_attempt.outputs.no_conflicts == 'false'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, pr_number } = {
+            owner: '${{ github.event.inputs.owner }}',
+            repo: '${{ github.event.inputs.repo }}',
+            pr_number: '${{ github.event.inputs.pr_number }}'
+          };
+          
+          const conflictedFiles = '${{ steps.conflicted_files.outputs.conflicted_files }}'.split(',').filter(f => f);
+          
+          const comment = `## 🤖 AI Conflict Resolution Ready
+          
+          **Conflicts detected:** ${conflictedFiles.length} files
+          
+          **Conflicted files:**
+          ${conflictedFiles.map(f => `- \`${f}\``).join('\n')}
+          
+          **Status:** AI resolutions have been generated and are ready for review.
+          
+          **Workflow Run:** [View Details](https://github.com/${owner}/${repo}/actions/runs/${{ github.run_id }})
+          
+          Please review the AI suggestions in the web interface before applying them.`;
+          
+          github.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number: pr_number,
+            body: comment
+          });
+
+    - name: No conflicts comment
+      if: steps.merge_attempt.outputs.no_conflicts == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, pr_number } = {
+            owner: '${{ github.event.inputs.owner }}',
+            repo: '${{ github.event.inputs.repo }}',
+            pr_number: '${{ github.event.inputs.pr_number }}'
+          };
+          
+          const comment = `## ✅ No Conflicts Detected
+          
+          This pull request has no merge conflicts and is ready to merge.
+          
+          **Workflow Run:** [View Details](https://github.com/${owner}/${repo}/actions/runs/${{ github.run_id }})`;
+          
+          github.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number: pr_number,
+            body: comment
+          });

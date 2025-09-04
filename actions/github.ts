@@ -84,6 +84,34 @@ export async function fetchPRFiles(prId: string) {
 
   const pr = await prResponse.json()
   
+  // Check if there's a recent workflow run with conflict resolution
+  const workflowRuns = await getRecentWorkflowRuns(owner, repo, accessToken.accessToken)
+  const latestRun = workflowRuns.find((run: any) => 
+    run.status === 'completed' && 
+    run.conclusion === 'success' &&
+    run.inputs?.pr_number === prNumber
+  )
+
+  if (latestRun) {
+    // Try to get resolved files from the latest workflow run
+    try {
+      const artifacts = await getWorkflowRunArtifacts(owner, repo, latestRun.id, accessToken.accessToken)
+      const resolvedArtifact = artifacts.find((artifact: any) => artifact.name === 'resolved-conflicts')
+      
+      if (resolvedArtifact) {
+        return {
+          files: [],
+          hasConflicts: true,
+          workflowRun: latestRun,
+          hasResolutions: true,
+          artifacts: artifacts
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch workflow artifacts:', error)
+    }
+  }
+
   // If PR is not mergeable, we need to detect conflicts
   if (pr.mergeable === false) {
     return await detectMergeConflicts(owner, repo, pr, accessToken.accessToken)
@@ -244,4 +272,52 @@ export async function fetchUserPRs() {
 
   const data = await response.json()
   return data.items || []
+}
+
+async function getRecentWorkflowRuns(owner: string, repo: string, accessToken: string) {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/actions/workflows/ai-conflict-resolver.yml/runs?per_page=10`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      return []
+    }
+
+    const data = await response.json()
+    return data.workflow_runs || []
+  } catch (error) {
+    console.error('Failed to fetch workflow runs:', error)
+    return []
+  }
+}
+
+async function getWorkflowRunArtifacts(owner: string, repo: string, runId: string, accessToken: string) {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/artifacts`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      return []
+    }
+
+    const data = await response.json()
+    return data.artifacts || []
+  } catch (error) {
+    console.error('Failed to fetch artifacts:', error)
+    return []
+  }
 }
