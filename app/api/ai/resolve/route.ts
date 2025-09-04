@@ -1,5 +1,4 @@
 import { streamText, UIMessage, convertToModelMessages, smoothStream, stepCountIs } from 'ai';
-import { openai } from '@ai-sdk/openai';
 import { SYSTEM_PROMPT } from '@/lib/agent/system-prompt';
 
 export const maxDuration = 30;
@@ -12,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     const result = streamText({
-        model: openai('gpt-4o'),
+        model: 'google/gemini-2.0-flash',
         system: SYSTEM_PROMPT,
         messages: [
             ...convertToModelMessages(messages)
